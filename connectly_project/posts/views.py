@@ -1,9 +1,10 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import User, Post, Comment
+from .models import Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsPostAuthor
 from rest_framework.authentication import TokenAuthentication
@@ -28,8 +29,11 @@ class UserListCreate(APIView):
 
 
 class PostListCreate(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        posts = Post.objects.all()
+        posts = Post.objects.filter(author=request.user)
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data)
 
@@ -37,7 +41,7 @@ class PostListCreate(APIView):
     def post(self, request):
         serializer = PostSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(author=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
